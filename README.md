@@ -141,14 +141,4 @@ Use **Neon PostgreSQL** or **Supabase PostgreSQL**
 - Docker Support
 - CI/CD Pipeline
 
----
 
-## Author
-
-**Hewan Adam**
-
-Software Engineering Student
-
-Addis Ababa Science and Technology University
-
----

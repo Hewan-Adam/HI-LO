@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background-color: #0b1210;
+  }
+
+  body {
+    @apply bg-felt text-parchment font-body;
+    /* Subtle radial vignette — the "felt under a single overhead lamp" read, applied once at the root rather than per-page. */
+    background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(212, 175, 55, 0.06), transparent);
+    min-height: 100dvh;
+  }
+
+  /* Visible keyboard focus everywhere — accessibility floor, not optional polish. */
+  :focus-visible {
+    outline: 2px solid #d4af37;
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}

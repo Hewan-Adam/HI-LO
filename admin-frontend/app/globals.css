@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: theme('colors.felt.DEFAULT');
+  color: theme('colors.parchment');
+}
+
+/* Tabular numerals everywhere numbers appear in tables — alignment matters
+   more here than in the player app, since this is a console built for
+   scanning rows of figures, not for a single hero number. */
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}

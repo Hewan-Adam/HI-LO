@@ -1,0 +1,334 @@
+// ============================================================================
+// Hi-Lo (Kef-Zk) Platform — Prisma Schema
+// Phase 1: Database schema + Game Engine
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
+
+enum Role {
+  PLAYER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum GameStatus {
+  ACTIVE
+  CASHED_OUT
+  LOST
+  ABANDONED
+}
+
+enum AceMode {
+  HIGH
+  LOW
+}
+
+enum EqualRule {
+  PUSH
+  LOSS
+  REDRAW
+}
+
+enum PredictionType {
+  HIGHER
+  LOWER
+}
+
+enum MoveResult {
+  WIN
+  LOSS
+  PUSH
+  REDRAW
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  BET
+  CASHOUT
+  REFUND
+  BONUS_CREDIT
+  PROMOTION_CREDIT
+  REFERRAL_REWARD
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+enum PromotionType {
+  DEPOSIT_BONUS
+  FREE_BET
+  CASHBACK
+  REFERRAL_BONUS
+}
+
+// ----------------------------------------------------------------------------
+// Core models
+// ----------------------------------------------------------------------------
+
+// Refresh tokens are never stored raw — only a SHA-256 hash of the token,
+// the same principle as password storage. `familyId` links every token
+// produced by rotating from the same original login: if a token is ever
+// presented after it's already been rotated away (i.e. someone replayed a
+// stolen, superseded token), the entire family is revoked rather than just
+// that one token, since reuse of a rotated-out token is a strong signal of
+// token theft.
+model RefreshToken {
+  id                  String    @id @default(uuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id])
+  tokenHash           String    @unique
+  familyId            String
+  revoked             Boolean   @default(false)
+  replacedByTokenHash String?
+  expiresAt           DateTime
+  createdAt           DateTime  @default(now())
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  telegramId   String   @unique
+  username     String?
+  firstName    String?
+  lastName     String?
+  role         Role     @default(PLAYER)
+  isBanned     Boolean  @default(false)
+  bannedReason String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  wallet             Wallet?
+  games              Game[]
+  transactions       Transaction[]
+  statistics         Statistics?
+  leaderboardEntries Leaderboard[]
+  referralsMade      Referral[]    @relation("Referrer")
+  referredBy         Referral?     @relation("ReferredUser")
+  auditLogs          AuditLog[]
+  refreshTokens      RefreshToken[]
+
+  @@index([telegramId])
+  @@index([role])
+  @@map("users")
+}
+
+model Wallet {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+  balance      Decimal  @default(0) @db.Decimal(18, 8)
+  bonusBalance Decimal  @default(0) @db.Decimal(18, 8)
+  currency     String   @default("USD")
+  // Optimistic-locking version counter. Every balance mutation must increment
+  // this and the update must be conditioned on the version it read, so two
+  // concurrent transactions on the same wallet can never silently clobber
+  // each other (see WalletService in the wallet-engine phase).
+  version      Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@map("wallets")
+}
+
+model Game {
+  id                String     @id @default(uuid())
+  userId            String
+  user              User       @relation(fields: [userId], references: [id])
+  betAmount         Decimal    @db.Decimal(18, 8)
+  status            GameStatus @default(ACTIVE)
+
+  // Rule configuration snapshotted at game start so a later admin change
+  // never alters the rules of a game already in progress.
+  aceMode           AceMode
+  equalRule         EqualRule
+
+  // Provably-fair inputs. serverSeed IS stored from game creation (the
+  // server needs it to deterministically regenerate the deck on every
+  // subsequent guess/cashout — see GameApiService.loadState). The
+  // "never reveal it while the game is active" guarantee from the spec is
+  // enforced at the API response-mapping layer (GameStateResponseDto only
+  // includes serverSeed once status != ACTIVE), not by withholding it from
+  // the database.
+  serverSeed        String?
+  serverSeedHash    String
+  clientSeed        String
+  nonce             Int
+
+  streak            Int      @default(0)
+  cursor            Int      @default(0) // index into the deterministically-regenerated deck of the currently-revealed card
+  currentMultiplier Decimal  @default(1) @db.Decimal(10, 4)
+  payout            Decimal? @db.Decimal(18, 8)
+  // Index into the deterministically-regenerated deck of the currently
+  // revealed card. Tracked explicitly (not derived from move count) because
+  // an EqualRule.REDRAW silently consumes a deck position without producing
+  // a GameMove row — move count alone can't recover the true position.
+  cursor            Int      @default(0)
+
+  startedAt         DateTime  @default(now())
+  endedAt           DateTime?
+  updatedAt         DateTime  @updatedAt // bumped on every appendMove — the sweep job uses this to find ACTIVE games with no recent activity
+
+  moves        GameMove[]
+  transactions Transaction[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("games")
+}
+
+model GameMove {
+  id              String         @id @default(uuid())
+  gameId          String
+  game            Game           @relation(fields: [gameId], references: [id])
+  moveIndex       Int
+  currentCardCode String
+  nextCardCode    String
+  prediction      PredictionType
+  result          MoveResult
+  multiplierAfter Decimal        @db.Decimal(10, 4)
+  createdAt       DateTime       @default(now())
+
+  @@unique([gameId, moveIndex])
+  @@index([gameId])
+  @@map("game_moves")
+}
+
+model Transaction {
+  id            String            @id @default(uuid())
+  userId        String
+  user          User              @relation(fields: [userId], references: [id])
+  gameId        String?
+  game          Game?             @relation(fields: [gameId], references: [id])
+  type          TransactionType
+  status        TransactionStatus @default(PENDING)
+  amount        Decimal           @db.Decimal(18, 8)
+  balanceBefore Decimal           @db.Decimal(18, 8)
+  balanceAfter  Decimal           @db.Decimal(18, 8)
+  reference     String?           @unique
+  metadata      Json?
+  createdAt     DateTime          @default(now())
+
+  @@index([userId])
+  @@index([gameId])
+  @@index([type])
+  @@index([status])
+  @@map("transactions")
+}
+
+model Leaderboard {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  // e.g. "DAILY-2026-07-25", "WEEKLY-2026-W30", "ALL_TIME"
+  period         String
+  totalWinnings  Decimal  @default(0) @db.Decimal(18, 8)
+  gamesPlayed    Int      @default(0)
+  bestMultiplier Decimal  @default(0) @db.Decimal(10, 4)
+  rank           Int?
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, period])
+  @@index([period])
+  @@index([rank])
+  @@map("leaderboard_entries")
+}
+
+model Statistics {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id])
+  totalGamesPlayed Int      @default(0)
+  totalWins        Int      @default(0)
+  totalLosses      Int      @default(0)
+  totalWagered     Decimal  @default(0) @db.Decimal(18, 8)
+  totalWon         Decimal  @default(0) @db.Decimal(18, 8)
+  bestMultiplier   Decimal  @default(0) @db.Decimal(10, 4)
+  longestStreak    Int      @default(0)
+  updatedAt        DateTime @updatedAt
+
+  @@map("statistics")
+}
+
+model Referral {
+  id             String   @id @default(uuid())
+  referrerId     String
+  referrer       User     @relation("Referrer", fields: [referrerId], references: [id])
+  referredUserId String   @unique
+  referredUser   User     @relation("ReferredUser", fields: [referredUserId], references: [id])
+  rewardPaid     Boolean  @default(false)
+  rewardAmount   Decimal? @db.Decimal(18, 8)
+  createdAt      DateTime @default(now())
+
+  @@index([referrerId])
+  @@map("referrals")
+}
+
+model Promotion {
+  id         String        @id @default(uuid())
+  name       String
+  type       PromotionType
+  isActive   Boolean       @default(true)
+  amount     Decimal?      @db.Decimal(18, 8)
+  percentage Decimal?      @db.Decimal(5, 2)
+  maxAmount  Decimal?      @db.Decimal(18, 8)
+  startsAt   DateTime?
+  endsAt     DateTime?
+  createdAt  DateTime      @default(now())
+
+  @@index([isActive])
+  @@index([type])
+  @@map("promotions")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  ipAddress  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+// Generic typed key/value store for everything the admin dashboard needs to
+// tune at runtime: multiplier table, house edge, ace mode default, equal-card
+// rule default, RTP target, etc. Keeping this generic means new tunables
+// don't require a migration.
+model AdminSettings {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  description String?
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("admin_settings")
+}

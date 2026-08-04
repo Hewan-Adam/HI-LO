@@ -1,10 +1,9 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, Get } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { AuthService } from '../services/auth.service';
-import { TelegramLoginDto, RefreshTokenDto } from '../dto/auth.dto';
-import { Public, CurrentUser } from '../decorators/auth.decorators';
-import { AccessTokenPayload } from '../interfaces/auth-types';
-
+import { AuthService } from './services/auth.service';
+import { TelegramLoginDto, RefreshTokenDto } from './dto/auth.dto';
+import { Public, CurrentUser } from './decorators/auth.decorators';
+import { AccessTokenPayload } from './interfaces/auth-types';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

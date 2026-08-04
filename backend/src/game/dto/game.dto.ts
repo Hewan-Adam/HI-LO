@@ -4,7 +4,7 @@ import { PredictionType } from '../../game-engine/interfaces/game-config.interfa
 export class StartGameDto {
   @IsNumber({ maxDecimalPlaces: 8 })
   @IsPositive()
-  betAmount: number;
+  betAmount!: number;
 
   // Optional: if the player's client wants to supply its own client seed
   // (so it can be chosen before the server commits to anything, strengthening
@@ -17,13 +17,13 @@ export class StartGameDto {
 
 export class SubmitGuessDto {
   @IsUUID()
-  gameId: string;
+  gameId!: string;
 
   @IsEnum(PredictionType)
-  prediction: PredictionType;
+  prediction!: PredictionType;
 }
 
 export class CashoutDto {
   @IsUUID()
-  gameId: string;
+  gameId!: string;
 }

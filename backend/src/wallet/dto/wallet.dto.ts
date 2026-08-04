@@ -3,7 +3,7 @@ import { IsNumber, IsOptional, IsPositive, IsString, IsUUID, IsBoolean, MaxLengt
 export class DepositDto {
   @IsNumber({ maxDecimalPlaces: 8 })
   @IsPositive()
-  amount: number;
+  amount!: number;
 
   @IsOptional()
   @IsString()
@@ -17,7 +17,7 @@ export class DepositDto {
 export class WithdrawDto {
   @IsNumber({ maxDecimalPlaces: 8 })
   @IsPositive()
-  amount: number;
+  amount!: number;
 
   @IsOptional()
   @IsString()
@@ -27,11 +27,11 @@ export class WithdrawDto {
 
 export class PlaceBetDto {
   @IsUUID()
-  gameId: string;
+  gameId!: string;
 
   @IsNumber({ maxDecimalPlaces: 8 })
   @IsPositive()
-  amount: number;
+  amount!: number;
 
   @IsOptional()
   @IsBoolean()
@@ -40,17 +40,17 @@ export class PlaceBetDto {
 
 export class SettleCashoutDto {
   @IsUUID()
-  gameId: string;
+  gameId!: string;
 
   @IsNumber({ maxDecimalPlaces: 8 })
   @IsPositive()
-  payoutAmount: number;
+  payoutAmount!: number;
 }
 
 export class BonusCreditDto {
   @IsNumber({ maxDecimalPlaces: 8 })
   @IsPositive()
-  amount: number;
+  amount!: number;
 
   @IsOptional()
   @IsString()

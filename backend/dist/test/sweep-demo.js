@@ -1,0 +1,90 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+require("reflect-metadata");
+const deck_service_1 = require("../src/game-engine/services/deck.service");
+const provably_fair_service_1 = require("../src/game-engine/services/provably-fair.service");
+const multiplier_service_1 = require("../src/game-engine/services/multiplier.service");
+const card_comparator_service_1 = require("../src/game-engine/services/card-comparator.service");
+const game_engine_service_1 = require("../src/game-engine/services/game-engine.service");
+const wallet_service_1 = require("../src/wallet/services/wallet.service");
+const in_memory_wallet_repository_1 = require("../src/wallet/repositories/in-memory-wallet.repository");
+const in_memory_game_repository_1 = require("../src/game/repositories/in-memory-game.repository");
+const in_memory_game_state_store_1 = require("../src/game/stores/in-memory-game-state.store");
+const game_rules_provider_1 = require("../src/game/services/game-rules.provider");
+const game_api_service_1 = require("../src/game/services/game-api.service");
+const statistics_service_1 = require("../src/statistics/services/statistics.service");
+const in_memory_statistics_repository_1 = require("../src/statistics/repositories/in-memory-statistics.repository");
+const leaderboard_service_1 = require("../src/leaderboard/services/leaderboard.service");
+const in_memory_leaderboard_repository_1 = require("../src/leaderboard/repositories/in-memory-leaderboard.repository");
+const user_or_ip_throttler_guard_1 = require("../src/common/guards/user-or-ip-throttler.guard");
+function line() {
+    console.log('-'.repeat(72));
+}
+async function main() {
+    const provablyFair = new provably_fair_service_1.ProvablyFairService();
+    const deckService = new deck_service_1.DeckService(provablyFair);
+    const multiplierService = new multiplier_service_1.MultiplierService();
+    const comparator = new card_comparator_service_1.CardComparatorService();
+    const gameEngine = new game_engine_service_1.GameEngineService(deckService, provablyFair, multiplierService, comparator);
+    const walletRepo = new in_memory_wallet_repository_1.InMemoryWalletRepository();
+    const walletService = new wallet_service_1.WalletService(walletRepo);
+    const gameRepo = new in_memory_game_repository_1.InMemoryGameRepository();
+    const stateStore = new in_memory_game_state_store_1.InMemoryGameStateStore();
+    const rulesProvider = new game_rules_provider_1.DefaultGameRulesProvider();
+    const statisticsService = new statistics_service_1.StatisticsService(new in_memory_statistics_repository_1.InMemoryStatisticsRepository());
+    const leaderboardService = new leaderboard_service_1.LeaderboardService(new in_memory_leaderboard_repository_1.InMemoryLeaderboardRepository());
+    const gameApi = new game_api_service_1.GameApiService(gameEngine, gameRepo, stateStore, rulesProvider, walletService, statisticsService, leaderboardService);
+    const USER = 'player-sweep';
+    await walletService.getOrCreateWallet(USER);
+    await walletService.deposit(USER, 100, 'seed');
+    line();
+    console.log('SETUP: three games in different staleness states');
+    line();
+    const fresh = await gameApi.startGame(USER, 10);
+    console.log(`Game A (fresh, untouched):        ${fresh.gameId}`);
+    const trulyStale = await gameApi.startGame(USER, 15);
+    console.log(`Game B (stale timestamp + no Redis state — should be swept): ${trulyStale.gameId}`);
+    const staleThreshold = new Date(Date.now() - (game_api_service_1.ACTIVE_GAME_TTL_SECONDS + 6 * 60) * 1000); // older than TTL + sweep buffer
+    gameRepo._debugSetUpdatedAt(trulyStale.gameId, staleThreshold);
+    await stateStore.delete(trulyStale.gameId); // simulates real Redis TTL expiry
+    const falsePositive = await gameApi.startGame(USER, 20);
+    console.log(`Game C (stale timestamp but Redis state still live — should be SKIPPED): ${falsePositive.gameId}`);
+    gameRepo._debugSetUpdatedAt(falsePositive.gameId, staleThreshold);
+    // deliberately NOT deleting its Redis state — this is the false-positive case
+    const balanceAfterThreeBets = (await walletService.getWallet(USER)).balance;
+    console.log(`Balance after 3 bets (100 - 10 - 15 - 20): ${balanceAfterThreeBets} (expected 55)`);
+    line();
+    console.log('RUN THE SWEEP');
+    line();
+    const result = await gameApi.sweepAbandonedGames();
+    console.log(`Sweep result: swept=${result.swept}, skipped=${result.skipped} (expected swept=1, skipped=1)`);
+    line();
+    console.log('VERIFY OUTCOMES');
+    line();
+    const rowA = await gameRepo.getGameById(fresh.gameId);
+    console.log(`Game A (fresh) untouched, still ACTIVE: ${rowA?.status === 'ACTIVE'}`);
+    const rowB = await gameRepo.getGameById(trulyStale.gameId);
+    console.log(`Game B correctly marked ABANDONED: ${rowB?.status === 'ABANDONED'}`);
+    console.log(`Game B's serverSeed correctly left null (genuinely unrecoverable): ${rowB?.serverSeed === undefined}`);
+    const rowC = await gameRepo.getGameById(falsePositive.gameId);
+    console.log(`Game C (false positive) correctly left ACTIVE, NOT swept: ${rowC?.status === 'ACTIVE'}`);
+    const finalBalance = (await walletService.getWallet(USER)).balance;
+    console.log(`Balance after sweep: ${finalBalance} (expected 55 + 15 refund from Game B = 70)`);
+    console.log(`Refund correctly applied only to the truly-stale game: ${finalBalance === 70}`);
+    const history = await walletService.getTransactionHistory(USER, 10);
+    const refundTx = history.find((t) => t.type === 'REFUND');
+    console.log(`A REFUND transaction was recorded for Game B: ${refundTx?.gameId === trulyStale.gameId}`);
+    line();
+    console.log('THROTTLER GUARD: tracks by user id when authenticated, falls back to IP otherwise');
+    line();
+    const guard = Object.create(user_or_ip_throttler_guard_1.UserOrIpThrottlerGuard.prototype);
+    const getTracker = guard.getTracker.bind(guard);
+    const authenticatedTracker = await getTracker({ user: { sub: 'user-123' }, ip: '203.0.113.5' });
+    console.log(`Authenticated request tracked by user id: ${authenticatedTracker === 'user:user-123'}`);
+    const anonymousTracker = await getTracker({ ip: '203.0.113.5' });
+    console.log(`Unauthenticated request falls back to IP: ${anonymousTracker === 'ip:203.0.113.5'}`);
+}
+main().catch((err) => {
+    console.error('DEMO FAILED:', err);
+    process.exit(1);
+});

@@ -10,6 +10,7 @@ import { DEFAULT_MULTIPLIER_TABLE } from '../constants/multiplier-table.constant
  */
 export function assertMonotonicMultiplierTable(table: MultiplierTableEntry[]): void {
   const sorted = [...table].sort((a, b) => a.streak - b.streak);
+
   for (let i = 1; i < sorted.length; i++) {
     if (sorted[i].multiplier <= sorted[i - 1].multiplier) {
       throw new Error(
@@ -21,14 +22,10 @@ export function assertMonotonicMultiplierTable(table: MultiplierTableEntry[]): v
 
 @Injectable()
 export class MultiplierService {
-  /**
-   * NOTE: in Phase 1 this defaults to the spec's example table. In the admin
-   * phase, GameEngineService will be handed a per-request table loaded from
-   * AdminSettings instead of relying on this default, so RTP/house-edge
-   * changes take effect without a redeploy.
-   */
-  constructor(private table: MultiplierTableEntry[] = DEFAULT_MULTIPLIER_TABLE) {
-    assertMonotonicMultiplierTable(table);
+  private table: MultiplierTableEntry[] = [...DEFAULT_MULTIPLIER_TABLE];
+
+  constructor() {
+    assertMonotonicMultiplierTable(this.table);
   }
 
   setTable(table: MultiplierTableEntry[]): void {
@@ -53,29 +50,45 @@ export class MultiplierService {
     if (streak <= 0) return 1;
 
     const exact = this.table.find((entry) => entry.streak === streak);
-    if (exact) return exact.multiplier;
+    if (exact) {
+      return exact.multiplier;
+    }
 
     const last = this.table[this.table.length - 1];
 
     if (streak < last.streak) {
-      // Between two configured points that aren't consecutive integers —
-      // shouldn't happen with the default table (every streak 1-8 is
-      // present), but handled defensively for custom admin tables.
+      // Between two configured points that aren't consecutive integers.
       const lower = [...this.table].reverse().find((e) => e.streak < streak);
       const upper = this.table.find((e) => e.streak > streak);
+
       if (lower && upper) {
         const ratio = (streak - lower.streak) / (upper.streak - lower.streak);
-        return Number((lower.multiplier + ratio * (upper.multiplier - lower.multiplier)).toFixed(4));
+
+        return Number(
+          (
+            lower.multiplier +
+            ratio * (upper.multiplier - lower.multiplier)
+          ).toFixed(4),
+        );
       }
     }
 
-    const secondLast = this.table[this.table.length - 2] ?? { streak: 0, multiplier: 1 };
+    const secondLast = this.table[this.table.length - 2] ?? {
+      streak: 0,
+      multiplier: 1,
+    };
+
     const growthRatio = last.multiplier / secondLast.multiplier;
     const stepsBeyond = streak - last.streak;
-    return Number((last.multiplier * Math.pow(growthRatio, stepsBeyond)).toFixed(4));
+
+    return Number(
+      (last.multiplier * Math.pow(growthRatio, stepsBeyond)).toFixed(4),
+    );
   }
 
   calculatePotentialPayout(betAmount: number, streak: number): number {
-    return Number((betAmount * this.getMultiplier(streak)).toFixed(8));
+    return Number(
+      (betAmount * this.getMultiplier(streak)).toFixed(8),
+    );
   }
 }

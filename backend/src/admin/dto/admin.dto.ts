@@ -11,34 +11,35 @@ export class BanUserDto {
 
 export class UpdateAceModeDto {
   @IsEnum(AceMode)
-  aceMode: AceMode;
+  aceMode!: AceMode;
 }
 
 export class UpdateEqualRuleDto {
   @IsEnum(EqualRule)
-  equalRule: EqualRule;
+  equalRule!: EqualRule;
 }
 
 export class MultiplierTableEntryDto {
   @IsNumber()
   @IsPositive()
-  streak: number;
+  streak!: number;
 
   @IsNumber()
   @IsPositive()
-  multiplier: number;
+  multiplier!: number;
 }
 
 export class UpdateMultiplierTableDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => MultiplierTableEntryDto)
-  table: MultiplierTableEntryDto[];
-}
+  table!: MultiplierTableEntryDto[];
 
-export class UpdateTargetRtpDto {
   @IsNumber()
-  @Min(0)
+  @IsPositive()
   @Max(100)
-  percent: number;
+  percent!: number;
+}
+export class UpdateTargetRtpDto {
+  percent!: number;
 }

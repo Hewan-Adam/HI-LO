@@ -182,7 +182,7 @@ model Game {
   // revealed card. Tracked explicitly (not derived from move count) because
   // an EqualRule.REDRAW silently consumes a deck position without producing
   // a GameMove row — move count alone can't recover the true position.
-  cursor            Int      @default(0)
+ 
 
   startedAt         DateTime  @default(now())
   endedAt           DateTime?

@@ -10,29 +10,32 @@
     "demo:api": "ts-node test/game-api-demo.ts",
     "demo:admin": "ts-node test/admin-demo.ts",
     "demo:sweep": "ts-node test/sweep-demo.ts",
-    "start": "ts-node src/main.ts",
+    "start": "nest start",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev --name init"
+    "prisma:migrate": "prisma migrate dev --name init",
+    "build": "nest build",
+    "start:dev": "nest start --watch"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.0",
     "@nestjs/core": "^10.4.0",
     "@nestjs/platform-express": "^10.4.0",
+    "@nestjs/schedule": "^4.1.1",
     "@nestjs/swagger": "^7.4.0",
     "@nestjs/throttler": "^6.2.1",
-    "@nestjs/schedule": "^4.1.1",
     "@prisma/client": "^5.19.0",
-    "class-validator": "^0.14.1",
     "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
     "helmet": "^7.1.0",
     "ioredis": "^5.4.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
+    "@nestjs/cli": "^11.0.24",
+    "@types/node": "^20.14.0",
     "prisma": "^5.19.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.4",
-    "@types/node": "^20.14.0"
+    "typescript": "^5.5.4"
   }
 }

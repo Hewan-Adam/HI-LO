@@ -52,6 +52,9 @@ let InMemoryAuthRepository = class InMemoryAuthRepository {
     async findUserByTelegramId(telegramId) {
         return this.usersByTelegramId.get(telegramId) ?? null;
     }
+    async findFirstUser() {
+        return this.usersById.values().next().value ?? null;
+    }
     async createUser(params) {
         const user = {
             id: crypto.randomUUID(),

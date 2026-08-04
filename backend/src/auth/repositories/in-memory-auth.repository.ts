@@ -12,7 +12,9 @@ export class InMemoryAuthRepository implements AuthRepository {
   async findUserByTelegramId(telegramId: string): Promise<AuthenticatedUser | null> {
     return this.usersByTelegramId.get(telegramId) ?? null;
   }
-
+async findFirstUser(): Promise<AuthenticatedUser | null> {
+  return this.usersById.values().next().value ?? null;
+}
   async createUser(params: { telegramId: string; username?: string; firstName?: string; lastName?: string }): Promise<AuthenticatedUser> {
     const user: AuthenticatedUser = {
       id: crypto.randomUUID(),

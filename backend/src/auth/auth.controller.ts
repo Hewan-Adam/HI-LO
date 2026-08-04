@@ -1,16 +1,16 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, Get } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, HttpCode, HttpStatus, Post, Get } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './services/auth.service';
 import { TelegramLoginDto, RefreshTokenDto } from './dto/auth.dto';
 import { Public, CurrentUser } from './decorators/auth.decorators';
 import { AccessTokenPayload } from './interfaces/auth-types';
+import { ApiBearerAuth } from '@nestjs/swagger';
+
+@ApiBearerAuth()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  // Tighter than the app-wide default: these are @Public (pre-auth), so the
-  // throttle guard always tracks by IP here regardless of guard ordering —
-  // exactly what's needed to slow down credential/initData brute-forcing.
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('telegram-login')
@@ -46,5 +46,30 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AccessTokenPayload) {
     return { id: user.sub, telegramId: user.telegramId, role: user.role };
+  }
+
+  // Dev-only bypass of Telegram initData verification. Hard-blocked in
+  // production regardless of how this guard config is deployed — this is
+  // the load-bearing check, not just a convenience gate.
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post('dev-login')
+  @HttpCode(HttpStatus.OK)
+  async devLogin() {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('Not available in production');
+    }
+
+    const { user, tokens } = await this.authService.devLogin();
+
+    return {
+      user: {
+        id: user.id,
+        telegramId: user.telegramId,
+        username: user.username,
+        role: user.role,
+      },
+      ...tokens,
+    };
   }
 }

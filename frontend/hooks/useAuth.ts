@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTelegramWebApp } from './useTelegramWebApp';
-import { telegramLogin, getCurrentUser, logout as apiLogout } from '../lib/api';
+import { telegramLogin, devLogin, getCurrentUser, logout as apiLogout } from '../lib/api';
 import { authStorage } from '../lib/auth-storage';
 import type { AuthUser } from '../lib/types';
 
@@ -15,13 +15,6 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Already have a session from a previous visit — confirm it's still
-    // valid (an account can be banned, or a refresh-token family revoked,
-    // between visits) and populate `user` rather than leaving it null with
-    // a stale 'authenticated' status. Note GET /auth/me's JWT-derived
-    // payload doesn't carry `username` (only id/telegramId/role) — the UI
-    // falls back to a generic "Player" label until the next full Telegram
-    // login repopulates it, which is a cosmetic gap, not a functional one.
     if (authStorage.getAccessToken()) {
       getCurrentUser()
         .then((me) => {
@@ -36,9 +29,22 @@ export function useAuth() {
     }
 
     if (!isTelegram) {
-      // Running outside Telegram (e.g. local dev in a normal browser) —
-      // there's no initData to log in with. The app still renders so the
-      // UI can be worked on without a live Telegram session.
+      // Running outside Telegram (e.g. local dev in a normal browser).
+      // In dev environments with the flag enabled, fall back to the
+      // backend's dev-login bypass instead of leaving the user stuck
+      // unauthenticated with no path to a token.
+      if (process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true') {
+        devLogin()
+          .then((data) => {
+            setUser(data.user);
+            setStatus('authenticated');
+          })
+          .catch((err) => {
+            setError(err instanceof Error ? err.message : 'Dev login failed');
+            setStatus('error');
+          });
+        return;
+      }
       setStatus('unauthenticated');
       return;
     }

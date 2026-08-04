@@ -2,20 +2,23 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.use(helmet());
-  app.enableCors();
+  app.enableCors({
+      origin: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ],
+    credentials: true,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // strips any property not declared on the DTO
-      forbidNonWhitelisted: true, // rejects requests that include extra properties, rather than silently dropping them
-      transform: true, // converts plain JSON into DTO class instances so class-validator decorators actually run
+      whitelist: true,
+      transform: true,
     }),
   );
 
@@ -25,13 +28,13 @@ async function bootstrap() {
     .setVersion('1.0')
     .addBearerAuth()
     .build();
+
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, swaggerDocument);
 
-  const port = process.env.PORT ? Number(process.env.PORT) : 3000;
-  await app.listen(port);
-  // eslint-disable-next-line no-console
-  console.log(`Hi-Lo API listening on port ${port} — Swagger docs at /docs`);
+  await app.listen(4000);
+
+  console.log('Hi-Lo API running on http://localhost:4000');
 }
 
 bootstrap();

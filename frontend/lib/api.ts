@@ -12,8 +12,9 @@ import type {
   TransactionEntry,
   WalletSummary,
 } from './types';
+import type { AuthUser } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 
 export class ApiError extends Error {
   constructor(
@@ -170,4 +171,26 @@ export function getLeaderboard(period: 'today' | 'all-time' = 'all-time', limit 
 
 export function getStatistics(): Promise<StatisticsSummary> {
   return request('/statistics');
+}
+// lib/api.ts
+
+// lib/api.ts
+export async function devLogin() {
+  const data = await request<{
+    user: AuthUser;
+    accessToken: string;
+    refreshToken: string;
+    accessTokenExpiresAt: string;
+    refreshTokenExpiresAt: string;
+  }>('/auth/dev-login', {
+    method: 'POST',
+    authenticated: false,
+  });
+
+  authStorage.setTokens({
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+  });
+
+  return data;
 }

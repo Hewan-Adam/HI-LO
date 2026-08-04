@@ -107,6 +107,30 @@ export class AuthService {
       await this.repository.revokeFamily(stored.familyId);
     }
   }
+ async devLogin(): Promise<LoginResult> {
+  let user = await this.repository.findFirstUser();
+
+  if (!user) {
+    user = await this.repository.createUser({
+      telegramId: '999999999',
+      username: 'dev_player',
+      firstName: 'Dev',
+      lastName: 'User',
+    });
+  }
+
+  if (user.isBanned) {
+    throw new UserBannedException();
+  }
+
+  const familyId = crypto.randomUUID();
+  const tokens = await this.issueTokenPair(user, familyId);
+
+  return {
+    user,
+    tokens,
+  };
+}
 
   private async issueTokenPair(user: AuthenticatedUser, familyId: string): Promise<TokenPair> {
     const access = this.tokenService.issueAccessToken(user.id, user.role, user.telegramId);

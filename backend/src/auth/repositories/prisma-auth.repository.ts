@@ -11,7 +11,21 @@ export class PrismaAuthRepository implements AuthRepository {
     const user = await this.prisma.user.findUnique({ where: { telegramId } });
     return user ? this.toAuthenticatedUser(user) : null;
   }
+async findFirstUser(): Promise<AuthenticatedUser | null> {
+  const user = await this.prisma.user.findFirst();
 
+  if (!user) {
+    return null;
+  }
+
+  return {
+    id: user.id,
+    telegramId: user.telegramId,
+    username: user.username ?? undefined,
+    role: user.role as Role,
+    isBanned: user.isBanned,
+  };
+}
   async createUser(params: { telegramId: string; username?: string; firstName?: string; lastName?: string }): Promise<AuthenticatedUser> {
     // Upsert rather than a plain create: two near-simultaneous first logins
     // from the same brand-new Telegram user (e.g. double-tapped launch)

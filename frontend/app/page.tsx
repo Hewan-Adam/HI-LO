@@ -33,7 +33,11 @@ export default function HomePage() {
         <Panel className="border-brick/40 text-center text-brick-light">Couldn't sign you in. Try reopening the Mini App.</Panel>
       )}
 
-      {(status === 'authenticated' || status === 'unauthenticated') && (
+      {status === 'unauthenticated' && (
+        <Panel className="text-center text-sage">Open this app inside Telegram to sign in.</Panel>
+      )}
+
+      {status === 'authenticated' && (
         <>
           <Panel>
             <p className="font-body text-xs uppercase tracking-wide text-sage">Balance</p>

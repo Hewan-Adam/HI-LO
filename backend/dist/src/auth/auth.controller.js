@@ -18,13 +18,11 @@ const throttler_1 = require("@nestjs/throttler");
 const auth_service_1 = require("./services/auth.service");
 const auth_dto_1 = require("./dto/auth.dto");
 const auth_decorators_1 = require("./decorators/auth.decorators");
+const swagger_1 = require("@nestjs/swagger");
 let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
     }
-    // Tighter than the app-wide default: these are @Public (pre-auth), so the
-    // throttle guard always tracks by IP here regardless of guard ordering —
-    // exactly what's needed to slow down credential/initData brute-forcing.
     async telegramLogin(dto) {
         const { user, tokens } = await this.authService.telegramLogin(dto.initData);
         return {
@@ -45,6 +43,24 @@ let AuthController = class AuthController {
     // Not @Public — exercises JwtAuthGuard, proving a valid access token is required.
     me(user) {
         return { id: user.sub, telegramId: user.telegramId, role: user.role };
+    }
+    // Dev-only bypass of Telegram initData verification. Hard-blocked in
+    // production regardless of how this guard config is deployed — this is
+    // the load-bearing check, not just a convenience gate.
+    async devLogin() {
+        if (process.env.NODE_ENV === 'production') {
+            throw new common_1.ForbiddenException('Not available in production');
+        }
+        const { user, tokens } = await this.authService.devLogin();
+        return {
+            user: {
+                id: user.id,
+                telegramId: user.telegramId,
+                username: user.username,
+                role: user.role,
+            },
+            ...tokens,
+        };
     }
 };
 exports.AuthController = AuthController;
@@ -84,7 +100,17 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "me", null);
+__decorate([
+    (0, auth_decorators_1.Public)(),
+    (0, throttler_1.Throttle)({ default: { limit: 20, ttl: 60_000 } }),
+    (0, common_1.Post)('dev-login'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "devLogin", null);
 exports.AuthController = AuthController = __decorate([
+    (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService])
 ], AuthController);

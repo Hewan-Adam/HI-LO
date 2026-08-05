@@ -8,7 +8,7 @@ import { formatCurrency, formatMultiplier } from '../lib/format';
 import { Panel, StatRow } from '../components/Panel';
 import { Button } from '../components/Button';
 import type { StatisticsSummary, WalletSummary } from '../lib/types';
-
+import { API_BASE_URL } from '../lib/api';
 export default function HomePage() {
   const { status, user, isTelegram, error } = useAuth();
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
@@ -34,6 +34,7 @@ export default function HomePage() {
         <div>5. window.Telegram.WebApp present: {typeof window !== 'undefined' ? String(!!window.Telegram?.WebApp) : 'n/a'}</div>
         <div>6. API_BASE_URL: {apiBase ? apiBase : 'UNSET'}</div>
         <div>7. API_URL: {apiUrl ? apiUrl : 'UNSET'}</div>
+        <div>8. Actual API_BASE_URL used: {API_BASE_URL}</div>
       </div>
 
       <header>

@@ -17,9 +17,10 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { UserOrIpThrottlerGuard } from './common/guards/user-or-ip-throttler.guard';
-
+import { BotModule } from './bot/bot.module';
 @Module({
   imports: [
+    BotModule,
     DatabaseModule,
     // Two throttle tiers: a generous default for normal browsing/API use,
     // and routes needing tighter limits (login, guess) override it with

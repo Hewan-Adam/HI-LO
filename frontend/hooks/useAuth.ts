@@ -28,38 +28,42 @@ export function useAuth() {
       return;
     }
 
-    if (!isTelegram) {
-      // Running outside Telegram (e.g. local dev in a normal browser).
-      // In dev environments with the flag enabled, fall back to the
-      // backend's dev-login bypass instead of leaving the user stuck
-      // unauthenticated with no path to a token.
-      if (process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true') {
-        devLogin()
-          .then((data) => {
-            setUser(data.user);
-            setStatus('authenticated');
-          })
-          .catch((err) => {
-            setError(err instanceof Error ? err.message : 'Dev login failed');
-            setStatus('error');
-          });
+    if (isTelegram) {
+      if (!initData) {
+        // Detected Telegram, but the WebApp hasn't handed us initData yet —
+        // keep showing 'loading' rather than leaving a stale
+        // 'unauthenticated' status from before Telegram was detected.
+        setStatus('loading');
         return;
       }
-      setStatus('unauthenticated');
+
+      telegramLogin(initData)
+        .then((res) => {
+          setUser(res.user);
+          setStatus('authenticated');
+        })
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : 'Login failed');
+          setStatus('error');
+        });
       return;
     }
 
-    if (!initData) return; // waiting for useTelegramWebApp's effect to populate it
+    // Not in Telegram.
+    if (process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true') {
+      devLogin()
+        .then((data) => {
+          setUser(data.user);
+          setStatus('authenticated');
+        })
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : 'Dev login failed');
+          setStatus('error');
+        });
+      return;
+    }
 
-    telegramLogin(initData)
-      .then((res) => {
-        setUser(res.user);
-        setStatus('authenticated');
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Login failed');
-        setStatus('error');
-      });
+    setStatus('unauthenticated');
   }, [initData, isTelegram]);
 
   const logout = useCallback(async () => {

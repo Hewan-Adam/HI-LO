@@ -14,7 +14,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
     "build": "npx prisma generate && nest build",
-  "start:prod": "node dist/main",
+  "start:prod": "node dist/src/main.js",
    "start:dev": "nest start --watch"
   },
   "dependencies": {

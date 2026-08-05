@@ -10,7 +10,7 @@ import { Button } from '../components/Button';
 import type { StatisticsSummary, WalletSummary } from '../lib/types';
 
 export default function HomePage() {
-  const { status, user } = useAuth();
+  const { status, user, isTelegram, error } = useAuth();
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [stats, setStats] = useState<StatisticsSummary | null>(null);
 
@@ -22,6 +22,15 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-6 px-5 pt-8">
+      {/* TEMPORARY DEBUG PANEL — remove once sign-in is confirmed working */}
+      <div style={{ fontSize: '11px', color: '#888', padding: '6px', border: '1px solid #444', borderRadius: '4px' }}>
+        <div>status: {status}</div>
+        <div>isTelegram: {String(isTelegram)}</div>
+        <div>error: {error ?? 'none'}</div>
+        <div>window.Telegram present: {typeof window !== 'undefined' ? String(!!window.Telegram) : 'n/a (SSR)'}</div>
+        <div>window.Telegram.WebApp present: {typeof window !== 'undefined' ? String(!!window.Telegram?.WebApp) : 'n/a (SSR)'}</div>
+      </div>
+
       <header>
         <p className="font-body text-sm text-sage">Welcome back{user?.username ? `,` : ''}</p>
         <h1 className="font-display text-3xl font-semibold text-parchment">{user?.username ?? 'Player'}</h1>

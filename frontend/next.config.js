@@ -5,7 +5,6 @@ const nextConfig = {
   // rendering benefit worth the complexity here — a static export keeps
   // deployment trivial (any static host / Cloudflare Pages / etc.) and
   // sidesteps SSR entirely trying to touch `window.Telegram`.
-  output: 'export',
   images: { unoptimized: true },
 };
 

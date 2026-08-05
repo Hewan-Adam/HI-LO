@@ -1,6 +1,9 @@
 {
-  "/lobby/page": "app/lobby/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/history/page": "app/history/page.js",
+  "/leaderboard/page": "app/leaderboard/page.js",
+  "/play/page": "app/play/page.js",
   "/page": "app/page.js",
-  "/wallet/page": "app/wallet/page.js",
-  "/leaderboard/page": "app/leaderboard/page.js"
+  "/lobby/page": "app/lobby/page.js",
+  "/wallet/page": "app/wallet/page.js"
 }

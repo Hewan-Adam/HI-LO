@@ -17,3 +17,9 @@ export class RefreshTokenReuseDetectedException extends UnauthorizedException {
     super('Refresh token reuse detected — all sessions for this account have been revoked. Please log in again.');
   }
 }
+
+export class DevLoginDisabledException extends ForbiddenException {
+  constructor() {
+    super('Dev login is disabled in this environment');
+  }
+}

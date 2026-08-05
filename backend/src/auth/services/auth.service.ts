@@ -4,8 +4,8 @@ import { TokenService } from './token.service';
 import { TelegramVerificationService } from './telegram-verification.service';
 import { AUTH_REPOSITORY, AuthRepository } from '../interfaces/auth-repository.interface';
 import { AuthenticatedUser, TokenPair } from '../interfaces/auth-types';
-import { InvalidRefreshTokenException, RefreshTokenReuseDetectedException, UserBannedException } from '../exceptions/auth.exceptions';
-
+import { InvalidRefreshTokenException, RefreshTokenReuseDetectedException, UserBannedException,  } from '../exceptions/auth.exceptions';
+import { DevLoginDisabledException }from '../exceptions/auth.exceptions';
 export interface LoginResult {
   user: AuthenticatedUser;
   tokens: TokenPair;
@@ -108,6 +108,11 @@ export class AuthService {
     }
   }
  async devLogin(): Promise<LoginResult> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new DevLoginDisabledException();
+  }
+
+  let users = await this.repository.findFirstUser();
   let user = await this.repository.findFirstUser();
 
   if (!user) {

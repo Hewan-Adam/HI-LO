@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Fraunces, Manrope, IBM_Plex_Mono } from 'next/font/google';
+import Script from 'next/script';
 import { BottomNav } from '../components/BottomNav';
 import './globals.css';
 
@@ -24,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${fraunces.variable} ${manrope.variable} ${plexMono.variable}`}>
       <head>
-        <script src="https://telegram.org/js/telegram-web-app.js" async />
+        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
       </head>
       <body>
         <main className="mx-auto min-h-dvh max-w-md pb-24">{children}</main>

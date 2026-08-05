@@ -28,25 +28,46 @@ declare global {
 }
 
 /**
- * Wraps the Telegram Mini App bridge. Degrades gracefully outside Telegram
- * (e.g. testing in a normal desktop browser during development) — every
- * method becomes a harmless no-op rather than throwing, so the rest of the
- * app never needs to branch on "am I actually inside Telegram?"
+ * Wraps the Telegram Mini App bridge. Polls briefly for window.Telegram.WebApp
+ * to appear, since the SDK script can finish loading after this effect first
+ * runs. Degrades gracefully outside Telegram (e.g. local browser dev) — every
+ * method becomes a harmless no-op rather than throwing.
  */
 export function useTelegramWebApp() {
   const [initData, setInitData] = useState<string>('');
   const [isTelegram, setIsTelegram] = useState(false);
 
   useEffect(() => {
-    const webApp = window.Telegram?.WebApp;
-    if (!webApp) return;
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 20; // ~2 seconds at 100ms intervals
 
-    setIsTelegram(true);
-    setInitData(webApp.initData ?? '');
-    webApp.ready();
-    webApp.expand();
-    webApp.setHeaderColor('#0B1210'); // matches the felt background token
-    webApp.setBackgroundColor('#0B1210');
+    function tryInit() {
+      if (cancelled) return;
+
+      const webApp = window.Telegram?.WebApp;
+      if (webApp) {
+        setIsTelegram(true);
+        setInitData(webApp.initData ?? '');
+        webApp.ready();
+        webApp.expand();
+        webApp.setHeaderColor('#0B1210');
+        webApp.setBackgroundColor('#0B1210');
+        return;
+      }
+
+      attempts += 1;
+      if (attempts < maxAttempts) {
+        setTimeout(tryInit, 100);
+      }
+      // Genuinely not in Telegram — give up silently, isTelegram stays false.
+    }
+
+    tryInit();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const haptic = {

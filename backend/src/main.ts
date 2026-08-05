@@ -11,7 +11,7 @@ async function bootstrap() {
       origin: [
     'http://localhost:3000',
     'http://localhost:3001',
-    'https://hi-lo-kappa.vercel.app/',
+    'https://hi-lo-kappa.vercel.app',
   ],
     credentials: true,
   });

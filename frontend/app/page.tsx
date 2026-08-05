@@ -20,15 +20,20 @@ export default function HomePage() {
     getStatistics().then(setStats).catch(() => {});
   }, [status]);
 
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
   return (
     <div className="flex flex-col gap-6 px-5 pt-8">
       {/* TEMPORARY DEBUG PANEL — remove once sign-in is confirmed working */}
       <div style={{ fontSize: '11px', color: '#888', padding: '6px', border: '1px solid #444', borderRadius: '4px' }}>
-        <div>status: {status}</div>
-        <div>isTelegram: {String(isTelegram)}</div>
-        <div>error: {error ?? 'none'}</div>
-        <div>window.Telegram present: {typeof window !== 'undefined' ? String(!!window.Telegram) : 'n/a (SSR)'}</div>
-        <div>window.Telegram.WebApp present: {typeof window !== 'undefined' ? String(!!window.Telegram?.WebApp) : 'n/a (SSR)'}</div>
+        <div>1. status: {status}</div>
+        <div>2. isTelegram: {String(isTelegram)}</div>
+        <div>3. error: {error ?? 'none'}</div>
+        <div>4. window.Telegram present: {typeof window !== 'undefined' ? String(!!window.Telegram) : 'n/a'}</div>
+        <div>5. window.Telegram.WebApp present: {typeof window !== 'undefined' ? String(!!window.Telegram?.WebApp) : 'n/a'}</div>
+        <div>6. API_BASE_URL: {apiBase ? apiBase : 'UNSET'}</div>
+        <div>7. API_URL: {apiUrl ? apiUrl : 'UNSET'}</div>
       </div>
 
       <header>
